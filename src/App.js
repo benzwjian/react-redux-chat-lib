@@ -3,52 +3,92 @@ import {createStore} from 'redux'
 import uuid from 'uuid'
 import './css/semantic.min.css';
 
-function reducer(state, action) { //pure function: don't modify arguments
-  if (action.type === 'ADD_MESSAGE') {
-    const newMessage = {
-      text: action.text,
-      timestamp: Date.now(),
-      id: uuid.v4()
-    }
-    const threadIndex = state.threads.findIndex((t) => t.id === action.threadId) //index of array
-    const oldThread = state.threads[threadIndex]
-    const newThread = {
-      ...oldThread,
-      messages: oldThread.messages.concat(newMessage) //this overwrites 'messages' of oldThread
-    }
-    return {
-      ...state,
-      threads: [ //this overwrites 'threads' of state
-        ...state.threads.slice(0, threadIndex),
-        newThread,
-        ...state.threads.slice(threadIndex + 1, state.threads.length)
-      ]
-    }
-  } else if (action.type === 'DELETE_MESSAGE') {
-    const threadIndex = state.threads.findIndex((t) => t.messages.find((m) => m.id === action.id))
-    const oldThread = state.threads[threadIndex]
-    const newThread = {
-      ...oldThread,
-      messages: oldThread.messages.filter((m) => m.id !== action.id)
-    }
-    return {
-      ...state,
-      threads: [
-        ...state.threads.slice(0, threadIndex),
-        newThread,
-        ...state.threads.slice(threadIndex + 1, state.threads.length)
-      ]
-    }
-  } else if (action.type === 'OPEN_THREAD') {
-    return {
-      ...state,
-      activeThreadId: action.id
-    }
+function reducer(state = {}, action) {
+  return { //state object return from individual sub-reducer
+    activeThreadId: activeThreadIdReducer(state.activeThreadId, action),
+    threads: threadsReducer(state.threads, action)
+  }
+}
+/* combineReducers comes from Redux
+const reducer = combineReducers({
+  activeThreadId: activeThreadIdReducer,
+  threads: threadsReducer
+})
+*/
+function activeThreadIdReducer(state = '1-fca2', action) {
+  if (action.type === 'OPEN_THREAD') {
+    return action.id
   } else {
     return state
   }
 }
 
+function findThreadIndex(threads, action) {
+  switch (action.type) {
+    case 'ADD_MESSAGE': {
+      return threads.findIndex((t) => t.id === action.threadId)
+    }
+    case 'DELETE_MESSAGE': {
+      return threads.findIndex((t) => t.messages.find((m) => m.id === action.id))
+    }
+  }
+}
+
+function threadsReducer(state = [
+    {
+      id: '1-fca2',
+      title: 'Buzz Aldrin',
+      messages: messagesReducer(undefined, {})
+    },
+    {
+      id: '2-be91',
+      title: 'Michael Collines',
+      messages: messagesReducer(undefined, {})
+    }
+  ], action) { //pure function: don't modify arguments
+  
+  switch (action.type) {
+    case 'ADD_MESSAGE':
+    case 'DELETE_MESSAGE': {
+      const threadIndex = findThreadIndex(state, action)
+      const oldThread = state[threadIndex]
+      const newThread = {
+        ...oldThread,
+        messages: messagesReducer(oldThread.messages, action)
+      }
+
+      return [
+        ...state.slice(0, threadIndex),
+        newThread,
+        ...state.slice(threadIndex + 1, state.length)
+      ]
+    }
+    default: {
+      return state
+    }
+  }
+}
+
+function messagesReducer(state = [], action) {
+  switch (action.type) {
+    case 'ADD_MESSAGE': {
+      const newMessage = {
+        text: action.text,
+        timestamp: Date.now(),
+        id: uuid.v4()
+      }
+      return state.concat(newMessage)
+    }
+    case 'DELETE_MESSAGE': {
+      return state.filter(m => m.id !== action.id)
+    }
+    default: {
+      return state
+    }
+  }
+}
+
+/* the state tree
 const initialState = {
   activeThreadId: '1-fca2',
   threads: [
@@ -70,7 +110,9 @@ const initialState = {
     }
   ]
 }
-const store = createStore(reducer, initialState)
+*/
+
+const store = createStore(reducer)
 
 class App extends Component {
   componentDidMount() {
