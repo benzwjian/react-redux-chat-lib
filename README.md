@@ -1,1 +1,1 @@
-Refactoring container component layer by using react-redux lib's connect() function.
+Use action object creators
