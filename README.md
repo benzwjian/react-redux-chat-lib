@@ -1,1 +1,1 @@
-Refactoring component layer by creating presentational and container components.
+Refactoring container component layer by using react-redux lib's connect() function.
